@@ -27,7 +27,6 @@
 ### Input & Mouse
 - `nhk.pressKey({ client, key, hold, silent })` — Background key tap (`hold` default `50` ms). Returns `bool`.
 - `nhk.holdKey({ client, key, mode, silent })` — `mode`: `"toggle"` (default), `"hold"`/`"down"`, `"release"`/`"up"`. Returns `bool` (`isDown`).
-- `nhk.buffSequence({ client, keys, delay, silent })` — `keys`: `{"F1","F2"}` or `"F1,F2"`, `delay` default `650` ms. Returns `bool`.
 - `nhk.forwardKey({ targets, key, isDown, trigger, silent })` — Real-time key forwarder while held.
 - `nhk.mouseClick({ client, button, action, x, y, rx, ry, relative, windowClient, onlyWhenFocused, hold, overlay, silent })` *(alias `mouseMoveClick`)* — `button`: `"left"|"right"|"middle"`, `action`: `"single"|"double"|"down"|"up"`. `x,y` support px or `"50%"`.
 - `nhk.autoClick(...)` — Background auto-clicker.

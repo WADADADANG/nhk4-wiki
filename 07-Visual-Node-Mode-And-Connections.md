@@ -132,3 +132,4 @@ NHK4's **Visual Node Mode** (`mode: "node"`) uses an Unreal Engine Blueprint-sty
 | `monster_scanner` | Scan Monsters on Screen | Scans visible monster nameplates on screen (`aggro_first`, `nearest`, name filter) and outputs counts + best target coordinates. |
 | `monster_target` | Target & Attack Monster | Scans for the best matching monster, clicks it, and optionally presses the attack key. |
 | `target_status` | Get Target Status | Reads the top selected-target bar HUD (`hasTarget`, `hp`, `isDead`, `isMonster`, `className`). |
+

@@ -53,11 +53,6 @@ Holds, releases, or toggles a key on target client(s).
 - **Params:** `client`, `key`, `mode` (or `action`: `"toggle"` default, `"hold"`/`"down"`/`"press"`/`"on"`/`"true"`, `"release"`/`"up"`/`"off"`/`"false"`), `silent` (bool)
 - **Returns:** `boolean` (`true` if key is now held down, `false` if released)
 
-### `nhk.buffSequence(opts | client, keys, [delayMs], [silent])`
-Presses a sequence of keys in order with a delay between each key.
-- **Params:** `client`, `keys` (or `sequence`: array `{"F1", "F2"}` or comma string `"F1,F2"`), `delay` (or `delayMs`, `interval`, default `650`), `silent` (bool)
-- **Returns:** `boolean`
-
 ### `nhk.forwardKey(opts | targets, key)`
 Forwards a held physical key to target clients in real time while physically held.
 - **Params:** `targets` (or `target`, `client`, default `"all"`), `key` (string), `isDown` (bool, optional), `trigger` (string, optional), `silent` (bool)
