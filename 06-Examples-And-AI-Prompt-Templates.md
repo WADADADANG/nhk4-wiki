@@ -44,52 +44,133 @@ nhk.registerOverlayInput({
 })
 ```
 
-### Example B: Ultra-Fast Stream Monster Target + Attack Loop
+### Example B: Stream Auto-Hunt & Combat State Machine (Production Pattern)
 ```lua
 local CLIENT = 1
-local ATTACK_KEY = "1"
-local running = false
+local MOB_NAME = "SmallHundurSharpfoot"
+local ATTACK_KEY = "7"
+local isRunning = false
 
-nhk.onHotkey({
-    key = "F5",
-    callback = function()
-        running = not running
-        if running then
-            nhk.startStream({ client = CLIENT, quality = 65 })
-            nhk.setTimer({
-                name = "hunt_loop",
-                interval = 180,
-                times = 0,
-                callback = function()
+-- Use "home" (or "insert"/"delete") for bot toggle; avoid F1-F12 (reserved for in-game skill bars)
+nhk.onHotkey("home", function()
+    isRunning = not isRunning
+
+    if not isRunning then
+        nhk.stopStream({ client = CLIENT })
+        nhk.clearStatusOverlay({ client = CLIENT, names = { "auto_hunt" } })
+        nhk.log("info", "Auto Hunt: STOPPED (Stream Closed)")
+        return
+    end
+
+    nhk.log("info", "Auto Hunt: STARTED (Stream Mode)")
+    nhk.startStream({ client = CLIENT, quality = 65 })
+    nhk.sleep(200) -- Wait for first frame in RAM
+
+    nhk.setStatusOverlay({
+        client = CLIENT,
+        name = "auto_hunt",
+        status = "Auto Hunt",
+        detail = "Searching " .. MOB_NAME,
+        type = "loop"
+    })
+
+    while isRunning do
+        -- 1. Scan nearest monster from RAM stream (<10ms)
+        local scan = nhk.scanMonstersStream({
+            client = CLIENT,
+            name = MOB_NAME,
+            priority = "nearest",
+            maxDistance = 450,
+            offsetY = 0,
+            overlay = true,
+            silent = true
+        })
+
+        if scan and #scan.monsters > 0 then
+            local targetMob = scan.best or scan.monsters[1]
+            local clickX = targetMob.clickX or (targetMob.x + math.floor(targetMob.width / 2))
+            local clickY = targetMob.clickY or (targetMob.y + math.floor(targetMob.height / 2))
+
+            -- 2. Click monster to select target
+            nhk.mouseClick({
+                client = CLIENT,
+                button = "left",
+                action = "single",
+                x = clickX,
+                y = clickY,
+                overlay = true,
+                silent = true
+            })
+
+            -- 3. Verify target bar appeared (up to 5 x 50ms)
+            local locked = false
+            for _ = 1, 5 do
+                nhk.sleep(50)
+                if not isRunning then break end
+
+                local target = nhk.getTargetStream({ client = CLIENT })
+                if target.hasTarget and (target.isMonster or not target.isDead) then
+                    locked = true
+                    break
+                end
+            end
+
+            -- 4. Combat state machine: Engaging -> Fighting -> Target Dead
+            if locked then
+                nhk.pressKey({ client = CLIENT, key = ATTACK_KEY, silent = true })
+
+                local initialTarget = nhk.getTargetStream({ client = CLIENT })
+                local lastHp = initialTarget.hp or 100
+                local isActivelyFighting = false
+                local retryAttackTimer = 0
+
+                while isRunning do
+                    nhk.sleep(50)
+                    if not isRunning then break end
+
                     local target = nhk.getTargetStream({ client = CLIENT })
-                    if target.hasTarget and not target.isDead then
-                        nhk.pressKey({ client = CLIENT, key = ATTACK_KEY, silent = true })
-                        return
-                    end
+                    if target.hasTarget then
+                        local currentHp = target.hp or 100
+                        if currentHp < lastHp then
+                            isActivelyFighting = true
+                            lastHp = currentHp
+                        end
 
-                    local scan = nhk.scanMonstersStream({
-                        client = CLIENT,
-                        priority = "aggro_first",
-                        overlay = false,
-                        silent = true
-                    })
-                    if scan.best then
-                        nhk.mouseClick({
-                            client = CLIENT,
-                            x = scan.best.clickX,
-                            y = scan.best.clickY,
-                            relative = false,
-                            silent = true
-                        })
+                        if isActivelyFighting then
+                            nhk.setStatusOverlay({
+                                client = CLIENT,
+                                name = "auto_hunt",
+                                status = "Fighting",
+                                detail = string.format("HP: %.0f%%", currentHp),
+                                type = "action"
+                            })
+                        else
+                            retryAttackTimer = retryAttackTimer + 1
+                            if retryAttackTimer >= 30 then
+                                nhk.pressKey({ client = CLIENT, key = ATTACK_KEY, silent = true })
+                                retryAttackTimer = 0
+                            end
+                            nhk.setStatusOverlay({
+                                client = CLIENT,
+                                name = "auto_hunt",
+                                status = "Engaging",
+                                detail = string.format("HP: %.0f%% (Approaching)", currentHp),
+                                type = "action"
+                            })
+                        end
+                    else
+                        break -- Target bar vanished -> mob dead
                     end
                 end
-            })
+                nhk.sleep(50)
+            else
+                nhk.sleep(50)
+            end
         else
-            nhk.killTimer("hunt_loop")
-            nhk.stopStream({ client = CLIENT })
+            nhk.sleep(80)
         end
     end
-})
+end)
 ```
 
 ### Example C: External Python Script Triggering NHK4 via HTTP Webhook
@@ -118,6 +199,7 @@ print(resp.json())
 > 3. Always use `nhk.wait({ ms = ... })` if any loop is needed, and use `silent = true` in high-frequency timers.
 > 4. Keep all `nhk.log` messages in English ASCII.
 > 5. Expose user-configurable values (thresholds, toggles) with `nhk.registerOverlayInput` instead of magic hardcoded numbers where appropriate.
+> 6. Use `"home"`, `"insert"`, or `"delete"` for bot start/stop toggle hotkeys — do **not** bind `F1`–`F12` as bot toggle hotkeys because they are used by in-game systems/skill bars.
 >
 > **My Task:**
 > [Describe what you want the script to do here, e.g., Client 1 attacks, Client 2 heals when HP < 75% and buffs every 5 minutes.]
