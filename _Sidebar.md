@@ -6,5 +6,6 @@
 * [04. Vision, Party & Monster Target](04-Vision-Party-And-Monster-Target)
 * [05. Overlay Input & Multi-Client](05-Overlay-Input-And-MultiClient)
 * [06. Examples & AI Prompts](06-Examples-And-AI-Prompt-Templates)
+* [07. Visual Node Mode & Nodes](07-Visual-Node-Mode-And-Connections)
 * [AI Context Bundle](AI_CONTEXT_BUNDLE)
 

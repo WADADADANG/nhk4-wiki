@@ -88,3 +88,16 @@
 - `POST /api/client/launch` | `POST /api/client/close` | `POST /api/client/{id}/focus`
 - `GET /api/signals/stream` | `GET /api/profile-events/stream` | `GET /api/profiles/stream` (SSE)
 
+---
+
+## 4. Visual Node Mode (`mode: "node"`) & Node Types
+- **Graph JSON:** `{ "mode": "node", "nodes": [{ "id", "type", "title", "position": {"x","y"}, "data": {...} }], "connections": [{ "fromNodeId", "fromPort", "toNodeId", "toPort" }], "variables": [...] }`.
+- **Connections:** Exec wires (`exec_out -> exec_in`, `true`/`false`, `on_tick`/`on_complete`) control flow; Data wires pass values or sync via `variables_map`. Node Mode and Code Mode communicate via `emit_event` ↔ `nhk.onEvent` and `nhk.emitEvent` ↔ `trigger` (`triggerType: "event"`).
+- **Available Node `type` values:**
+  - **Trigger:** `trigger` (`triggerType`: `"keyboard"|"mouse"|"event"|"webhook"`, `triggerValue`)
+  - **Client:** `client_start`, `client_stop`, `client_check`
+  - **Input:** `key_press`, `key_hold`, `forwarder`, `mouse_click`
+  - **Flow/Logic:** `branch`, `var_branch`, `condition_group`, `wait` (`delay`), `timer`, `loop` (`repeat_loop`), `loop_scheduler`, `sequencer`, `debounce`, `reroute`, `control`
+  - **Data/Utils:** `var_get`, `var_set` (`variable`), `format_text`, `message_log`, `sound`, `tts`, `screenshot`, `desktop_screenshot`, `webhook_out`, `emit_event`, `emergency_stop`
+  - **Vision (Pro):** `party_scanner`, `party_heal`, `party_buff`, `party_slot`, `monster_scanner`, `monster_target`, `target_status`
+

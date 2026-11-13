@@ -20,6 +20,7 @@ This Wiki is designed to be uploaded to **GitHub / GitHub Wiki** so users and de
 | [04. Vision, Party & Monster Target](04-Vision-Party-And-Monster-Target.md) | `scanParty`, `partyHeal`, `partyBuffNext`, `selectPartySlot`, `scanMonsters`, `targetMonster`, `getTarget`, Stream APIs |
 | [05. Overlay Input & Multi-Client](05-Overlay-Input-And-MultiClient.md) | Dynamic Overlay UI controls (`registerOverlayInput`, `onOverlayInput`), window focus, `fakeFocus`, status overlays |
 | [06. Examples & AI Prompt Templates](06-Examples-And-AI-Prompt-Templates.md) | Ready-to-use Luau script recipes and copy-paste prompts for external AIs |
+| [07. Visual Node Mode & Node Reference](07-Visual-Node-Mode-And-Connections.md) | Blueprint node graph JSON schema, Exec/Data connections, and complete reference of all visual nodes |
 | [AI Context Bundle (Single File)](AI_CONTEXT_BUNDLE.md) | Compact all-in-one reference file you can upload or paste into any AI chat in one shot |
 
 ---
