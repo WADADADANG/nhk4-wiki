@@ -70,3 +70,18 @@ nhk.restoreFocus(prev)
 - **Background Fake Focus (`nhk.fakeFocus(slot)`):** Sends a fake focus message to the target window handle without stealing OS foreground focus.
 - **Focus Click (`nhk.focusClick`):** Focuses the window, sends an OS click, and restores the previous foreground window + cursor position automatically (`restoreFocus = true` by default).
 
+---
+
+## 4. In-Game Canvas Debug Drawing Overlay (`web/draw.rs`)
+Draw lightweight non-blocking vector shapes directly on top of a client viewport (click-through, auto-expiring via `durationMs`, or persistent by `id`).
+- **`nhk.drawRect({ client, x, y, w|width, h|height, color?, thickness?, fill?, label?, durationMs?, id? })`** -> `boolean`
+- **`nhk.drawCircle({ client, x, y, r|radius, color?, thickness?, fill?, label?, durationMs?, id? })`** -> `boolean`
+- **`nhk.drawLine({ client, x1, y1, x2, y2, color?, thickness?, durationMs?, id? })`** -> `boolean`
+- **`nhk.drawText({ client, x, y, text, color?, size?, bg?, durationMs?, id? })`** -> `boolean`
+- **`nhk.clearDraw(client, [id])`** or **`nhk.clearDraw({ client, id? })`** -> `boolean` *(Omit `id` to clear all shapes on that client)*
+
+```lua
+nhk.drawRect({ client = 1, id = "mob_box", x = 770, y = 677, w = 80, h = 10, color = "#22c55e", label = "Small Samoset", durationMs = 2000 })
+nhk.drawCircle({ client = 1, id = "click_pt", x = 810, y = 720, r = 8, color = "#38bdf8", durationMs = 2000 })
+```
+

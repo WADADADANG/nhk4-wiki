@@ -91,6 +91,11 @@ Temporarily focuses the target OS window, performs an OS-level mouse click, and 
 - **Params:** `client`, `button` (default `"left"`), `action` (`"single"`), `x`, `y`, `rx`, `ry`, `relative` (default `true`), `hold` (default `25`), `restoreFocus` (or `restore`, default `true`), `silent` (bool)
 - **Returns:** `boolean`
 
+### Client & Global Config Inspection (`client/config.rs`)
+- **`nhk.getClientInfo(client)`** -> `{ slot, alias, online, paused, mode, browser, url, proxy, userAgent, appTarget?, bounds? } | nil`
+- **`nhk.getClients()`** -> `table[]` (Array of `getClientInfo` tables for all configured `clientSlots`)
+- **`nhk.getGlobalConfig()`** -> `{ activeProfile, activeProfiles, clientSlots, disabledClients, suspendHotkey, targetUrlKeyword, enableOverlay, enablePipOverlay, gpuAcceleration, webPort }`
+
 ---
 
 ## Module 3: Timing & Timers (`flow.rs`)
@@ -184,8 +189,92 @@ Sends an async HTTP POST webhook (JSON, plain text, or multipart image upload).
 Immediately halts the engine (or a specific scope).
 - **Params:** `reason` (or `message`), `scope` (`"all"` default), `client`, `node_id` (or `nodeId`), `profile` (or `profile_name`)
 
+### `nhk.httpRequest(opts | url, [method], [body])` *(Feature: `http_client`)*
+Sends an HTTP request (`GET`, `POST`, `PUT`, `DELETE`, `PATCH`) and auto-parses JSON responses.
+- **Params:** `url`, `method` (`"GET"` default), `headers` (table), `body` (string or table — auto-serialized as JSON), `timeoutMs` (`10000` default)
+- **Returns:** `{ status, ok, body, json?, error? }`
+
+### `nhk.getClipboard()` / `nhk.setClipboard(opts | text)`
+Reads or writes plain UTF-8 text on the Windows Clipboard.
+- `getClipboard()` -> `string`
+- `setClipboard({ text })` -> `boolean`
+
+### Local File & JSON Storage (`storage.rs`)
+Supports **100% user-specified paths** (e.g. `"D:/Data/out.json"`, `"C:/Users/%USERNAME%/Documents/NHK4/data.json"`, or `"~/Documents/NHK4/data.json"`). Relative paths resolve from the current working directory. Parent directories are created automatically.
+- `nhk.writeFile({ path, content, append? })` -> `boolean`
+- `nhk.readFile({ path })` -> `string | nil`
+- `nhk.writeJson({ path, data, pretty? })` -> `boolean`
+- `nhk.readJson({ path })` -> `table | any | nil`
+
+### Custom HTML/CSS/JS Overlays (`custom_overlay.rs`)
+Creates independent floating overlay windows with 2-way Luau ↔ HTML/JS messaging. Multiple overlays can run simultaneously with unique `id`s and are automatically closed when the script stops.
+- `nhk.createOverlay(id, htmlOrOpts)` -> `boolean`
+  `htmlOrOpts` can be a raw HTML string or `{ html?, url?, title?, width?, height?, x?, y?, transparent?, alwaysOnTop?, clickThrough? }`.
+- `nhk.sendOverlay(id, event, data?)` -> `boolean`
+  Pushes `{ id, event, data }` to the overlay page (handled in JS via `window.nhkOverlay.onMessage(fn)` or `window.addEventListener('message', ...)`).
+- `nhk.closeOverlay(id)` -> `boolean`
+- `nhk.onOverlayMessage(id, callback)` -> `boolean`
+  Registers a Luau callback `function(msg)` receiving `{ id, event, data }` sent from JS via `window.nhkOverlay.send(event, data)`.
+
 ---
 
-## Modules 7, 8, 9: Vision, Monster & Target (`vision.rs`, `vision_monster.rs`, `vision_target.rs`)
-See **[04. Vision, Party & Monster Target](04-Vision-Party-And-Monster-Target.md)** for full parameter and return field documentation.
+## Modules 7, 8, 9: Vision, Monster, Target & Vision Primitives (`vision/`)
+See **[04. Vision, Party & Monster Target](04-Vision-Party-And-Monster-Target.md)** for full parameter and return field documentation (including `captureFrame`, `getPixel`, `findColor`, `countColor`, `findRowBar`, `compareRegion`, `findImage`, `saveFrame`, and `ocrRegion`).
+
+---
+
+## Module 10: Web DOM, WebSocket & WASM (`web/`) *(Feature: `web_dom`)*
+
+> **When to use Web DOM vs Vision:**
+> - `webEval`, `webQuery`, `webWaitFor`, `webClick`, `webType` operate on **standard HTML DOM elements** (normal websites, dashboards, forms, item tables).
+> - For **WebGL / `<canvas>` games**, DOM selectors cannot see inside the canvas — use **Vision Primitives** (`captureFrame`, `findRowBar`, `ocrRegion`) or **Opt-In WASM** (`wasmEnable`, `wasmScan`, `wasmRead`).
+
+### Web DOM Extraction & Control (`web/dom.rs`)
+- **`nhk.webEval({ client, js })` -> `any`**
+  Executes JavaScript inside the client browser tab via CDP `Runtime.evaluate` (supports `Promise` awaiting) and converts JSON return values into Luau tables/primitives.
+- **`nhk.webQuery({ client, selector, attr?, all? })` -> `string | string[] | nil`**
+  Queries `document.querySelector` (or `querySelectorAll` if `all = true`). Omit `attr` for `innerText`, or pass `"value"`, `"href"`, `"src"`, `"innerHTML"`, etc.
+- **`nhk.webWaitFor({ client, selector, timeoutMs? })` -> `boolean`**
+  Event-driven wait using `MutationObserver` inside the page until `selector` exists or `timeoutMs` (default `5000`) expires.
+- **`nhk.webClick({ client, selector })` -> `boolean`**
+  Scrolls the first matching element into view, focuses it, and calls `.click()`.
+- **`nhk.webType({ client, selector, text, clear? })` -> `boolean`**
+  Sets input/textarea value using native property setters and dispatches `input` & `change` events (compatible with React/Vue controlled inputs). `clear` defaults to `true`.
+- **`nhk.webInfo({ client })` -> `{ url, title } | nil`**
+  Returns the current tab URL and `document.title`.
+- **`nhk.webNavigate({ client, url })` -> `boolean`**
+  Navigates the client browser tab to `url` (`http://` or `https://`) via CDP `Page.navigate`.
+
+### Web Canvas Draw Overlay (`web/draw.rs`)
+Click-through `<canvas>` overlay (`pointer-events: none`) inside the client browser viewport using exact viewport coordinates (`durationMs` defaults to `1500`, pass `0` for persistent):
+- `nhk.drawRect({ client, x, y, w, h, color?, thickness?, fill?, label?, durationMs?, id? })` -> `boolean`
+- `nhk.drawLine({ client, x1, y1, x2, y2, color?, thickness?, durationMs?, id? })` -> `boolean`
+- `nhk.drawText({ client, x, y, text, color?, size?, bg?, durationMs?, id? })` -> `boolean`
+- `nhk.clearDraw(client, id?)` -> `boolean`
+
+### Opt-In CDP WebSocket / Network Capture (`web/network.rs`)
+Zero footprint when not called; activates `Network.enable` only on the requested client slot.
+- **`nhk.netStart({ client })` -> `boolean`** — Enables CDP Network events and starts buffering WebSocket frames (up to 512 events).
+- **`nhk.netPoll({ client, limit? })` -> `table[]`** — Drains queued events `{ type = "ws_open"|"ws_recv"|"ws_send", requestId, url?, opcode, payload, timestampMs }`.
+- **`nhk.netStop({ client })` -> `boolean`** — Calls `Network.disable` and clears the buffer.
+
+### Opt-In WASM Memory Inspector (`web/wasm.rs`)
+Zero injection at browser startup; only instruments `WebAssembly` (using a non-enumerable `Symbol` store across main window and same-origin iframes) when `wasmEnable` is called.
+- **`nhk.wasmEnable({ client, reload? })` -> `boolean`** — Arms the tracker; pass `reload = true` if the WASM module already loaded before enabling.
+- **`nhk.wasmDisable({ client })` -> `boolean`** — Removes `addScriptToEvaluateOnNewDocument` and deletes the tracker reference.
+- **`nhk.wasmInfo({ client })` -> `{ enabled, count, memories: [{ index, bytes, pages }] }`** — Lists captured `WebAssembly.Memory` buffers (1 page = 65,536 bytes).
+- **`nhk.wasmScan({ client, value?, type?, compare?, tolerance?, index?, offsets?, maxResults? })` -> `number[]`** — Scans for `value` (`type`: `"i32"`, `"u32"`, `"i16"`, `"f32"`, `"f64"`, `"string"`, `tolerance` default `0.5`). Supports `compare`: `"exact"` *(default)*, `"unknown"` *(initial snapshot)*, `"changed"`, `"unchanged"`, `"increased"`, `"decreased"`. Pass `offsets = previousHits` to narrow down (**Next Scan**).
+- **`nhk.wasmRead({ client, offset, type?, length?, index? })` -> `number | string | number[] | nil`** — Reads typed value (`"i32"`, `"u32"`, `"i16"`, `"u8"`, `"f32"`, `"f64"`, `"string"`, `"bytes"`) at byte `offset`.
+
+---
+
+## Module 11: Windows Desktop App UI Automation (`app/`) *(Feature: `app_uia`)*
+Allows scripts to inspect and automate **native Windows desktop applications** (non-browser apps like Calculator, Notepad, launchers, etc.) via Windows `IUIAutomation`.
+- **`nhk.appListWindows({ filter? })` -> `table[]`**
+  Lists visible top-level windows with `{ hwnd, pid, title, processName, className, rect = { x, y, w, h } }`. Optional `filter` matches title/process/class case-insensitively.
+- **`nhk.appReadText({ hwnd?, title?, process?, controlType?, name?, maxDepth?, maxResults? })` -> `table[] | nil`**
+  Traverses the UI Automation tree (default `maxDepth = 6`, `maxResults = 100`) and returns controls with text/values: `{ name, value, controlType, automationId, rect }`.
+- **`nhk.appClickControl({ hwnd?, title?, process?, name?, automationId?, controlType?, maxDepth? })` -> `boolean`**
+  Finds a control by `name` or `automationId` and invokes `InvokePattern` (or clicks its center rect as fallback).
+
 

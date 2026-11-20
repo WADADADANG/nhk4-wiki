@@ -185,6 +185,36 @@ resp = requests.post(
 print(resp.json())
 ```
 
+### Example D: Web Extraction + HTTP + Local JSON Persistence
+```lua
+nhk.onHotkey("home", function()
+    -- 1. Extract data from a normal website open in Client 2
+    nhk.webNavigate({ client = 2, url = "https://www.wikipedia.org/" })
+    if nhk.webWaitFor({ client = 2, selector = "#searchInput", timeoutMs = 5000 }) then
+        nhk.webType({ client = 2, selector = "#searchInput", text = "Rust (programming language)" })
+        nhk.webClick({ client = 2, selector = "button[type=\"submit\"]" })
+        if nhk.webWaitFor({ client = 2, selector = "#firstHeading", timeoutMs = 8000 }) then
+            local title = nhk.webQuery({ client = 2, selector = "#firstHeading" })
+            nhk.writeJson({
+                path = "C:/Users/%USERNAME%/Documents/NHK4/web_result.json",
+                data = { heading = title, url = nhk.webInfo({ client = 2 }).url }
+            })
+        end
+    end
+end)
+```
+
+### Example E: WASM Next-Scan + Read Loop
+```lua
+local hits = nil
+nhk.onHotkey("insert", function()
+    -- Press once when HP=100, again when HP=80 (update targetVal each time)
+    local targetVal = 100
+    hits = nhk.wasmScan({ client = 1, value = targetVal, type = "i32", offsets = hits })
+    nhk.log("info", "WASM scan hits=" .. tostring(hits and #hits or 0))
+end)
+```
+
 ---
 
 ## 2. Copy-Paste Prompt Templates for External AIs

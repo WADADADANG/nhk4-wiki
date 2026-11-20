@@ -62,18 +62,48 @@
 - `nhk.partyHeal({ client, threshold, key, region, clickTarget, showOverlay, delayAfterClick, silent })` -> `bool`
 - `nhk.partyBuffNext({ client, key, region, silent })` -> `bool`
 - `nhk.selectPartySlot({ client, slot, region, overlay, delay, silent })` -> `number` (`slot 1..8` or `0`)
-- `nhk.scanMonsters({ client, name, priority, offsetY, maxDistance, minScore, overlay, quality, silent })` -> `{ count, aggroCount, passiveCount, hasTarget, targetHp, best, monsters }`
+- `nhk.scanMonsters({ client, name, priority, offsetY, maxDistance, minScore, skipCenter, skipPlayers, overlay, quality, silent })` -> `{ count, aggroCount, passiveCount, hasTarget, targetHp, isMonsterTarget, best, monsters }` *(Real Windows OCR name verification cached 15s per `trackId`, with automatic lossless PNG clip for uncached Red Aggro nameplates)*
 - `nhk.scanMonstersStream(...)` — Same as `scanMonsters` using RAM stream (`<10ms`, includes `latencyMs`).
-- `nhk.targetMonster({ client, name, attackKey, priority, offsetY, maxDistance, minScore, click, delayAfterClick, overlay, silent })` -> `{ found, success, count, x, y, clickX, clickY, isAggro, distance, dist, score, trackId, id }`
+- `nhk.targetMonster({ client, name, attackKey, priority, offsetY, maxDistance, minScore, skipCenter, skipPlayers, click, delayAfterClick, overlay, silent })` -> `{ found, success, count, aggroCount, passiveCount, hasTarget, targetHp, name, x, y, clickX, clickY, isAggro, distance, dist, score, trackId, id }`
+- `nhk.findMonsterBody({ client, mob | x, y, width, height, padX?, offsetY?, scanHeight?, motionWeight?, useMotion?, maskPlayer?, maxCandidates?, overlay?, overlayDurationMs?, quality?, silent? })` -> `{ found, clickX, clickY, areaPixels, coreDepth, confidence, latencyMs, bodyBox, roiBox, candidates }`
+- `nhk.findMonsterBodies(client, mobsList, opts?)` -> `bodyResult[]` *(Batch body detection from 1 frame capture)*
+- `nhk.isMonsterHovered({ client, mob | x, y, width, height, padX?, offsetY?, scanHeight?, minPixels?, fresh?, maxFrameAgeMs?, quality?, silent? })` -> `{ hovered, outlinePixels, latencyMs, box }`
 - `nhk.getTarget({ client, log, overlay, quality })` / `nhk.getTargetStream({ client, log, overlay })` -> `{ hasTarget, className, hp, isDead, isMonster, hasNumbers, hasMpBar, circleType, scale, hasGoldX, x, y, width, latencyMs }`
+- `nhk.scanCharStatus({ client, position?, scale?, minScale?, maxScale?, region?, ocr?, ocrLang?, autoHideNumbers?, useStream?, overlay?, guide?, overlayDurationMs?, quality?, silent? })` / `nhk.scanCharStatusStream(...)` -> `{ found, zone, scale, confidence, hp, mp, fp, exp, name?, level?, titleText?, expExact?, expText?, hasBarNumbers, barTextPixels, toggledNumberClicks, latencyMs, box, titleBox, guideRect, searchRect, portrait, bars }`
+- `nhk.setMapAnchor({ client, name?, region?, overlay?, overlayDurationMs?, quality?, silent? })` | `nhk.getMapDrift({ client, name?, region?, maxShift?, overlay?, overlayDurationMs?, quality?, silent? })` -> `{ ok, dx, dy, distance, returnAngle, confidence, monsterCount, monsterDots, cx, cy, radius, outerRadius, headingDeg?, turnDelta?, nearestMonsterAngle?, densestMonsterAngle?, latencyMs }` | `nhk.clearMapAnchor(client, name?)`
 - `nhk.takeScreenshot({ client, prefix, region, subfolder, silent })` -> `filepath | nil`
 - `nhk.takeDesktopScreenshot({ monitor, subfolder, prefix, region, silent })` -> `filepath | nil`
+- `nhk.snapToRam({ client, bucket?, prefix?, region?, maxFrames?, maxMb?, useStream?, maxStreamAgeMs?, fallbackCapture?, quality?, silent?, log? })` -> `{ ok, bucket, seq, count, bytes, totalBytes, totalMb, dropped, source, latencyUs }` | `nhk.saveRamSnaps({ bucket?, subfolder?, prefix?, clearAfter?, async?, wait?, silent? })` | `nhk.getRamSnaps({ bucket? })` | `nhk.clearRamSnaps({ bucket?, silent? })`
+- `nhk.captureFrame({ client?, monitor?, hwnd?, region? })` -> `{ id, width, height }` / `nhk.releaseFrame(id)` / `nhk.saveFrame({ frameId, path, region? })` *(RAM Frame Pool)*
+- `nhk.getPixel({ frameId|client, x, y })` -> `{ r, g, b, a, hex }`
+- `nhk.findColor({ frameId|client, color, tolerance?, region?, step?, maxResults? })` -> `{ found, count, x, y, matches }`
+- `nhk.countColor({ frameId|client, color, tolerance?, region?, step? })` -> `{ count, total, ratio, percent, minX?, minY?, maxX?, maxY? }`
+- `nhk.findRowBar({ frameId|client, region, color, tolerance? })` -> `{ percent, fillWidth, totalWidth, x, y }`
+- `nhk.compareRegion({ frameId1, frameId2, region?, threshold?, step? })` -> `{ changed, diffCount, total, diffRatio, percent }`
+- `nhk.findImage({ frameId|client, image, threshold?, region?, step?, mode? })` -> `{ found, x, y, confidence, width, height }` *(Supports local path, `http(s)://` URL with startup preload + RAM/disk cache, and `data:image/...;base64,...`)*
+- `nhk.ocrRegion({ frameId|client, region?, lang? })` -> `{ text, lines }` *(Windows Native OCR)*
+- **Custom HTML/CSS/JS Overlays:** `nhk.createOverlay(id, htmlOrOpts)` | `nhk.sendOverlay(id, event, data?)` | `nhk.closeOverlay(id)` | `nhk.onOverlayMessage(id, callback)` *(2-way `window.nhkOverlay` bridge)*
+- **Canvas Drawing Overlays:** `nhk.drawRect({ client, x, y, w, h, color?, thickness?, fill?, label?, durationMs?, id? })` | `nhk.drawCircle({ client, x, y, r, color?, thickness?, fill?, label?, durationMs?, id? })` | `nhk.drawLine({ client, x1, y1, x2, y2, color?, thickness?, durationMs?, id? })` | `nhk.drawText({ client, x, y, text, color?, size?, bg?, durationMs?, id? })` | `nhk.clearDraw(client, id?)`
 
-### Utilities & Safety
+### Web DOM, Network & WASM (`web_dom`)
+*(Note: `web*` targets HTML DOM on normal websites; use Vision Primitives or Opt-In WASM for `<canvas>`/`WebGL` games. `netStart` and `wasmEnable` are opt-in with zero browser-startup footprint.)*
+- `nhk.webEval({ client, js })` | `nhk.webQuery({ client, selector, attr?, all? })` | `nhk.webWaitFor({ client, selector, timeoutMs? })` | `nhk.webClick({ client, selector })` | `nhk.webType({ client, selector, text, clear? })` | `nhk.webInfo({ client })` | `nhk.webNavigate({ client, url })`
+- `nhk.netStart({ client })` | `nhk.netPoll({ client, limit? })` | `nhk.netStop({ client })` *(Buffers `ws_open`/`ws_recv`/`ws_send` CDP frames)*
+- `nhk.wasmEnable({ client, reload? })` | `nhk.wasmDisable({ client })` | `nhk.wasmInfo({ client })` | `nhk.wasmScan({ client, value, type?, index?, offsets?, maxResults? })` | `nhk.wasmRead({ client, offset, type?, length?, index? })` *(Pass `offsets` for Next Scan; `type`: `i32`/`u32`/`i16`/`f32`/`f64`/`string`/`bytes`)*
+
+### Desktop App UI Automation (`app_uia`)
+- `nhk.appListWindows({ filter? })` -> `[{ hwnd, pid, title, processName, className, rect }]`
+- `nhk.appReadText({ hwnd?, title?, process?, controlType?, name?, maxDepth? })` -> `[{ name, value, controlType, automationId, rect }]`
+- `nhk.appClickControl({ hwnd?, title?, process?, name?, automationId?, controlType? })` -> `boolean`
+
+### Utilities, HTTP, Clipboard, Storage & Safety
 - `nhk.log(level, msg)` or `nhk.log({ message, level, silent })` — Levels: `"action"`, `"info"`, `"system"`, `"warn"`, `"error"`, `"log"`, `"success"`. (English ASCII only).
 - `nhk.playSound({ sound, volume })`
 - `nhk.speakTts({ text, voice, silent })` *(Pro)*
 - `nhk.sendWebhook({ url, message, image })`
+- `nhk.httpRequest({ url, method?, headers?, body?, timeoutMs? })` -> `{ status, ok, body, json?, error? }` *(Feature: `http_client`)*
+- `nhk.getClipboard()` / `nhk.setClipboard({ text })`
+- `nhk.writeFile({ path, content, append? })` | `nhk.readFile({ path })` | `nhk.writeJson({ path, data, pretty? })` | `nhk.readJson({ path })` *(Supports full paths & `%USERNAME%` / `~`)*
 - `nhk.emergencyStop({ reason, scope, client, node_id, profile })`
 
 ---
